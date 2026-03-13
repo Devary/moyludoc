@@ -20,7 +20,13 @@ public class DocumentLibraryHtmlService {
                 + ".muted{font-size:13px;color:#9ca3af;margin-bottom:16px;}"
                 + ".tree,.tree ul{list-style:none;padding-left:16px;margin:0;}"
                 + ".tree-root{padding-left:0;}"
-                + ".folder{margin:8px 0 4px;color:#d1d5db;font-weight:600;}"
+                + ".folder-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;color:#d1d5db;font-weight:600;cursor:pointer;user-select:none;}"
+                + ".folder-row:hover{background:#1f2937;}"
+                + ".folder-caret{display:inline-block;width:14px;color:#93c5fd;transition:transform .15s ease;}"
+                + ".folder-node.collapsed>.folder-row .folder-caret{transform:rotate(0deg);}"
+                + ".folder-node:not(.collapsed)>.folder-row .folder-caret{transform:rotate(90deg);}"
+                + ".folder-children{display:block;}"
+                + ".folder-node.collapsed>.folder-children{display:none;}"
                 + ".doc-link{display:block;color:#93c5fd;text-decoration:none;padding:6px 8px;border-radius:8px;margin:2px 0;font-size:14px;}"
                 + ".doc-link:hover,.doc-link.active{background:#1f2937;color:#fff;}"
                 + ".doc-link.empty-file{color:#fca5a5;}"
@@ -32,7 +38,7 @@ public class DocumentLibraryHtmlService {
                 + ".viewer{height:calc(100vh - 58px);width:100%;border:0;background:#fff;}"
                 + "</style></head><body>"
                 + "<div class=\"layout\">"
-                + "<aside class=\"sidebar\"><h1>Moyludoc Library</h1><div class=\"muted\">Classic tree view restored.</div>"
+                + "<aside class=\"sidebar\"><h1>Moyludoc Library</h1><div class=\"muted\">Dynamic collapsible tree restored.</div>"
                 + "<ul class=\"tree tree-root\">" + treeHtml + "</ul></aside>"
                 + "<main class=\"content\">"
                 + "<div class=\"viewer-header\"><div class=\"viewer-meta\"><strong id=\"currentDoc\">No document selected</strong><span id=\"breadcrumbs\" class=\"breadcrumbs\">—</span></div><div class=\"viewer-actions\"><a id=\"downloadBtn\" href=\"#\" onclick=\"return false;\">Download original</a></div></div>"
@@ -40,6 +46,7 @@ public class DocumentLibraryHtmlService {
                 + "</main></div>"
                 + "<script>"
                 + "document.querySelectorAll('.doc-link').forEach(link=>{link.addEventListener('click',async e=>{e.preventDefault();document.querySelectorAll('.doc-link').forEach(x=>x.classList.remove('active'));link.classList.add('active');const id=link.dataset.id;const meta=await fetch('/api/docx/library/document/meta?id='+encodeURIComponent(id)).then(r=>r.json());document.getElementById('currentDoc').textContent=meta.name;document.getElementById('breadcrumbs').textContent=meta.breadcrumbs||'—';document.getElementById('downloadBtn').href='/api/docx/library/document/download?id='+encodeURIComponent(id);document.getElementById('viewer').src='/api/docx/library/document/preview?id='+encodeURIComponent(id);});});"
+                + "document.querySelectorAll('.folder-row').forEach(row=>{row.addEventListener('click',()=>{const node=row.closest('.folder-node');if(node){node.classList.toggle('collapsed');}});});"
                 + "</script></body></html>";
     }
 
@@ -62,9 +69,9 @@ public class DocumentLibraryHtmlService {
                         .append(escapeHtml(node.relativePath()))
                         .append("</span></a></li>");
             } else {
-                html.append("<li><div class=\"folder\">📁 ")
+                html.append("<li class=\"folder-node collapsed\"><div class=\"folder-row\"><span class=\"folder-caret\">▶</span><span>📁 ")
                         .append(escapeHtml(node.name()))
-                        .append("</div><ul>")
+                        .append("</span></div><ul class=\"folder-children\">")
                         .append(renderTree(node.children()))
                         .append("</ul></li>");
             }

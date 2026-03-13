@@ -7,7 +7,11 @@ import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -20,15 +24,31 @@ public class SpreadsheetPreviewService {
             List<SheetData> sheets = new ArrayList<>();
             DataFormatter formatter = new DataFormatter();
             for (Sheet sheet : workbook) {
-                List<List<String>> rows = new ArrayList<>();
+                List<List<CellData>> rows = new ArrayList<>();
                 int maxColumns = 0;
                 for (Row row : sheet) {
                     int lastCell = Math.max(row.getLastCellNum(), 0);
                     maxColumns = Math.max(maxColumns, lastCell);
-                    List<String> values = new ArrayList<>();
+                    List<CellData> values = new ArrayList<>();
                     for (int i = 0; i < lastCell; i++) {
                         Cell cell = row.getCell(i, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
-                        values.add(cell == null ? "" : formatter.formatCellValue(cell));
+                        if (cell == null) {
+                            values.add(new CellData("", false, false, null, null));
+                            continue;
+                        }
+                        CellStyle style = cell.getCellStyle();
+                        Font font = workbook.getFontAt(style.getFontIndex());
+                        String bg = null;
+                        if (style.getFillPattern() == FillPatternType.SOLID_FOREGROUND
+                                && style.getFillForegroundColor() != IndexedColors.AUTOMATIC.getIndex()) {
+                            bg = "E5E7EB";
+                        }
+                        values.add(new CellData(
+                                formatter.formatCellValue(cell),
+                                font.getBold(),
+                                font.getItalic(),
+                                font.getFontHeightInPoints() > 0 ? (double) font.getFontHeightInPoints() : null,
+                                bg));
                     }
                     rows.add(values);
                 }
@@ -51,8 +71,10 @@ public class SpreadsheetPreviewService {
             for (int r = 0; r < sheet.rows().size(); r++) {
                 html.append("<tr>");
                 for (int c = 0; c < sheet.columnCount(); c++) {
-                    String value = c < sheet.rows().get(r).size() ? sheet.rows().get(r).get(c) : "";
-                    html.append(r == 0 ? "<th>" : "<td>").append(escape(value)).append(r == 0 ? "</th>" : "</td>");
+                    CellData cell = c < sheet.rows().get(r).size() ? sheet.rows().get(r).get(c) : new CellData("", false, false, null, null);
+                    String tag = r == 0 ? "th" : "td";
+                    html.append("<").append(tag).append(" style=\"").append(css(cell)).append("\">")
+                            .append(escape(cell.value())).append("</").append(tag).append(">");
                 }
                 html.append("</tr>");
             }
@@ -62,10 +84,20 @@ public class SpreadsheetPreviewService {
         return html.toString();
     }
 
+    private String css(CellData cell) {
+        StringBuilder css = new StringBuilder();
+        if (cell.bold()) css.append("font-weight:bold;");
+        if (cell.italic()) css.append("font-style:italic;");
+        if (cell.fontSize() != null) css.append("font-size:").append(cell.fontSize()).append("pt;");
+        if (cell.background() != null && !cell.background().isBlank()) css.append("background:#").append(cell.background().replaceFirst("^FF", "")).append(";");
+        return css.toString();
+    }
+
     private String escape(String value) {
         return value == null ? "" : value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 
     public record SpreadsheetData(List<SheetData> sheets) {}
-    public record SheetData(String name, List<List<String>> rows, int columnCount) {}
+    public record SheetData(String name, List<List<CellData>> rows, int columnCount) {}
+    public record CellData(String value, boolean bold, boolean italic, Double fontSize, String background) {}
 }

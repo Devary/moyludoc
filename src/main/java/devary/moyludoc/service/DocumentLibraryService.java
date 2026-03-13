@@ -32,7 +32,7 @@ public class DocumentLibraryService {
                 true,
                 false,
                 0,
-                loadChildrenInternal(root),
+                buildFullChildren(root),
                 true);
     }
 
@@ -82,6 +82,18 @@ public class DocumentLibraryService {
         }
     }
 
+    private List<DocumentTreeNode> buildFullChildren(Path directory) {
+        try (Stream<Path> stream = Files.list(directory)) {
+            return stream
+                    .sorted(Comparator.comparing(path -> path.getFileName().toString().toLowerCase()))
+                    .map(this::toFullNode)
+                    .filter(Objects::nonNull)
+                    .toList();
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to build full tree for " + directory, e);
+        }
+    }
+
     private DocumentTreeNode toNode(Path parent, Path path) {
         try {
             Path root = ensureRoot();
@@ -103,6 +115,48 @@ public class DocumentLibraryService {
                         0,
                         List.of(),
                         false);
+            }
+            if (!isSupportedDocument(path)) {
+                return null;
+            }
+            long size = Files.exists(path) ? Files.size(path) : 0;
+            return new DocumentTreeNode(
+                    path.getFileName().toString(),
+                    relative.toString(),
+                    true,
+                    id,
+                    detectFileType(path),
+                    false,
+                    size == 0,
+                    size,
+                    List.of(),
+                    true);
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private DocumentTreeNode toFullNode(Path path) {
+        try {
+            Path root = ensureRoot();
+            Path relative = root.relativize(path);
+            String id = encode(relative);
+            if (Files.isDirectory(path)) {
+                List<DocumentTreeNode> children = buildFullChildren(path);
+                if (children.isEmpty()) {
+                    return null;
+                }
+                return new DocumentTreeNode(
+                        path.getFileName().toString(),
+                        relative.toString(),
+                        false,
+                        id,
+                        "directory",
+                        true,
+                        false,
+                        0,
+                        children,
+                        true);
             }
             if (!isSupportedDocument(path)) {
                 return null;
@@ -146,7 +200,9 @@ public class DocumentLibraryService {
 
     private boolean isSupportedDocument(Path path) {
         String fileName = path.getFileName().toString().toLowerCase();
-        return fileName.endsWith(".docx") || fileName.endsWith(".xlsx") || fileName.endsWith(".pptx");
+        return fileName.endsWith(".docx") || fileName.endsWith(".xlsx") || fileName.endsWith(".pptx")
+                || fileName.endsWith(".pdf") || fileName.endsWith(".txt") || fileName.endsWith(".html")
+                || fileName.endsWith(".htm") || fileName.endsWith(".md");
     }
 
     private String detectFileType(Path path) {
@@ -159,6 +215,18 @@ public class DocumentLibraryService {
         }
         if (fileName.endsWith(".pptx")) {
             return "pptx";
+        }
+        if (fileName.endsWith(".pdf")) {
+            return "pdf";
+        }
+        if (fileName.endsWith(".txt")) {
+            return "txt";
+        }
+        if (fileName.endsWith(".html") || fileName.endsWith(".htm")) {
+            return "html";
+        }
+        if (fileName.endsWith(".md")) {
+            return "md";
         }
         return "unknown";
     }

@@ -5,6 +5,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import org.apache.poi.xwpf.usermodel.IBodyElement;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
@@ -136,16 +137,25 @@ public class DocxParsingService {
                         ComponentType.IMAGE,
                         picture.getDescription(),
                         null,
-                        new ImageData(
-                                safeString(picture.getDescription()),
-                                safeString(picture.getPictureData() != null ? picture.getPictureData().getFileName() : null),
-                                safeString(picture.getPictureData() != null ? picture.getPictureData().suggestFileExtension() : null),
-                                picture.getPictureData() != null ? picture.getPictureData().getData().length : 0),
+                        toImageData(picture),
                         null));
             }
         }
 
         return components;
+    }
+
+    private ImageData toImageData(XWPFPicture picture) {
+        byte[] data = picture.getPictureData() != null ? picture.getPictureData().getData() : new byte[0];
+        String format = safeString(picture.getPictureData() != null ? picture.getPictureData().suggestFileExtension() : null);
+        String mimeType = format.isBlank() ? "application/octet-stream" : "image/" + format;
+        return new ImageData(
+                safeString(picture.getDescription()),
+                safeString(picture.getPictureData() != null ? picture.getPictureData().getFileName() : null),
+                format,
+                mimeType,
+                data.length,
+                data.length == 0 ? "" : Base64.getEncoder().encodeToString(data));
     }
 
     private DocumentComponent toTableComponent(int index, XWPFTable table) {
@@ -331,7 +341,9 @@ public class DocxParsingService {
             String description,
             String fileName,
             String format,
-            int sizeInBytes) {
+            String mimeType,
+            int sizeInBytes,
+            String base64Data) {
     }
 
     public record TableData(List<TableRowData> rows) {

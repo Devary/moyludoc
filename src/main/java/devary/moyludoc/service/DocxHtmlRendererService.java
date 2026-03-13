@@ -29,6 +29,7 @@ public class DocxHtmlRendererService {
                 .append("td,th{border:1px solid #d1d5db;padding:10px;vertical-align:top;}")
                 .append("tr:first-child td{background:#f9fafb;font-weight:600;}")
                 .append(".image-placeholder{display:inline-block;padding:10px 14px;border:1px dashed #9ca3af;border-radius:8px;background:#f9fafb;color:#4b5563;margin:4px 0;}")
+                .append("img.embedded-image{max-width:100%;height:auto;display:block;margin:8px 0;border-radius:8px;}")
                 .append(".section-block{margin-bottom:18px;}")
                 .append(".list-item{display:flex;gap:10px;align-items:flex-start;margin:0 0 14px;line-height:1.6;}")
                 .append(".list-bullet{min-width:22px;color:#374151;}")
@@ -147,6 +148,23 @@ public class DocxHtmlRendererService {
 
     private void appendImage(StringBuilder html, DocxParsingService.ImageData image) {
         if (image == null) {
+            return;
+        }
+        if (image.base64Data() != null && !image.base64Data().isBlank() && image.mimeType() != null && !image.mimeType().isBlank()) {
+            html.append("<figure>")
+                    .append("<img class=\"embedded-image\" alt=\"")
+                    .append(escapeHtml(firstNonBlank(image.description(), image.fileName(), "Embedded image")))
+                    .append("\" src=\"data:")
+                    .append(escapeHtml(image.mimeType()))
+                    .append(";base64,")
+                    .append(image.base64Data())
+                    .append("\">");
+            if (!firstNonBlank(image.description(), image.fileName()).isBlank()) {
+                html.append("<figcaption class=\"meta\">")
+                        .append(escapeHtml(firstNonBlank(image.description(), image.fileName())))
+                        .append("</figcaption>");
+            }
+            html.append("</figure>");
             return;
         }
         html.append("<div class=\"image-placeholder\">🖼 ")

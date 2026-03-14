@@ -46,7 +46,7 @@ public class PdfPreviewService {
                     .append("<img class=\"page-thumb\" alt=\"PDF page\" src=\"data:image/png;base64,")
                     .append(image.base64Png()).append("\">");
         }
-        html.append("<pre>").append(escape(data.text())).append("</pre></div></body></html>");
+        html.append("</div></body></html>");
         return html.toString();
     }
 

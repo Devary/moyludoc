@@ -116,36 +116,45 @@ public class DocumentLibraryResource {
 
     private Object extractStored(DocumentLibraryService.StoredDocument stored) {
         if (stored.empty()) return new EmptyDocumentResponse(stored.name(), stored.fileType(), stored.sizeInBytes(), true);
-        return switch (stored.fileType()) {
-            case "docx" -> docxParsingService.parse(stored.content());
-            case "xlsx" -> spreadsheetPreviewService.parse(stored.content());
-            case "pptx" -> presentationPreviewService.parse(stored.content());
-            case "pdf" -> pdfPreviewService.parse(stored.content());
-            case "txt", "html", "md" -> textPreviewService.parse(stored.content(), stored.fileType());
-            default -> throw new WebApplicationException("Unsupported file type", Response.Status.BAD_REQUEST);
-        };
+        try {
+            return switch (stored.fileType()) {
+                case "docx" -> docxParsingService.parse(stored.content());
+                case "xlsx" -> spreadsheetPreviewService.parse(stored.content());
+                case "pptx" -> presentationPreviewService.parse(stored.content());
+                case "pdf" -> pdfPreviewService.parse(stored.content());
+                case "txt", "html", "md" -> textPreviewService.parse(stored.content(), stored.fileType());
+                default -> throw new WebApplicationException("Unsupported file type", Response.Status.BAD_REQUEST);
+            };
+        } catch (Exception e) {
+            return new DocumentErrorResponse(stored.name(), stored.fileType(), "extract", true,
+                    "There was an error while parsing the document. Please contact Fakher Hammami.");
+        }
     }
 
     private String previewStored(DocumentLibraryService.StoredDocument stored) {
         if (stored.empty()) return renderEmptyDocument(stored);
-        return switch (stored.fileType()) {
-            case "docx" -> docxHtmlRendererService.renderDocument(docxParsingService.parse(stored.content()), stored.name());
-            case "xlsx" -> Templates.previewSpreadsheet(stored.name(), spreadsheetPreviewService.parse(stored.content())).render();
-            case "pptx" -> Templates.previewPresentation(stored.name(), presentationPreviewService.parse(stored.content())).render();
-            case "pdf" -> Templates.previewPdf(stored.name(), pdfPreviewService.parse(stored.content())).render();
-            case "txt", "html", "md" -> {
-                TextPreviewService.TextData data = textPreviewService.parse(stored.content(), stored.fileType());
-                String renderedBody = textPreviewService.renderBody(data);
-                yield Templates.previewText(
-                        stored.name(),
-                        stored.fileType().toUpperCase(),
-                        "html".equals(stored.fileType()),
-                        "md".equals(stored.fileType()),
-                        data.text(),
-                        new RawString(renderedBody)).render();
-            }
-            default -> throw new WebApplicationException("Unsupported file type", Response.Status.BAD_REQUEST);
-        };
+        try {
+            return switch (stored.fileType()) {
+                case "docx" -> docxHtmlRendererService.renderDocument(docxParsingService.parse(stored.content()), stored.name());
+                case "xlsx" -> Templates.previewSpreadsheet(stored.name(), spreadsheetPreviewService.parse(stored.content())).render();
+                case "pptx" -> Templates.previewPresentation(stored.name(), presentationPreviewService.parse(stored.content())).render();
+                case "pdf" -> Templates.previewPdf(stored.name(), pdfPreviewService.parse(stored.content())).render();
+                case "txt", "html", "md" -> {
+                    TextPreviewService.TextData data = textPreviewService.parse(stored.content(), stored.fileType());
+                    String renderedBody = textPreviewService.renderBody(data);
+                    yield Templates.previewText(
+                            stored.name(),
+                            stored.fileType().toUpperCase(),
+                            "html".equals(stored.fileType()),
+                            "md".equals(stored.fileType()),
+                            data.text(),
+                            new RawString(renderedBody)).render();
+                }
+                default -> throw new WebApplicationException("Unsupported file type", Response.Status.BAD_REQUEST);
+            };
+        } catch (Exception e) {
+            return renderPreviewError(stored, e);
+        }
     }
 
     private DocumentLibraryService.StoredDocument readDocument(String id) {
@@ -155,8 +164,25 @@ public class DocumentLibraryResource {
 
     private String renderEmptyDocument(DocumentLibraryService.StoredDocument stored) {
         return "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>"
-                + stored.name() + "</title><style>body{font-family:Inter,Arial,sans-serif;background:#f8fafc;color:#0f172a;padding:32px}.box{max-width:720px;margin:40px auto;background:#fff;border-radius:16px;padding:32px;box-shadow:0 10px 30px rgba(0,0,0,.08)}.meta{color:#64748b}</style></head><body><div class=\"box\"><h1>"
-                + stored.name() + "</h1><p class=\"meta\">" + stored.fileType().toUpperCase() + " file • empty document</p><p>There is nothing to preview because this file is empty.</p></div></body></html>";
+                + escapeHtml(stored.name()) + "</title><style>body{font-family:Inter,Arial,sans-serif;background:#f8fafc;color:#0f172a;padding:32px}.box{max-width:720px;margin:40px auto;background:#fff;border-radius:16px;padding:32px;box-shadow:0 10px 30px rgba(0,0,0,.08)}.meta{color:#64748b}</style></head><body><div class=\"box\"><h1>"
+                + escapeHtml(stored.name()) + "</h1><p class=\"meta\">" + escapeHtml(stored.fileType().toUpperCase()) + " file • empty document</p><p>There is nothing to preview because this file is empty.</p></div></body></html>";
+    }
+
+    private String renderPreviewError(DocumentLibraryService.StoredDocument stored, Exception e) {
+        return "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Preview error</title><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#7f1d1d;font-family:Inter,Arial,sans-serif;color:#fff;padding:24px}.error-box{max-width:760px;width:100%;background:#b91c1c;border:2px solid rgba(255,255,255,.28);border-radius:20px;padding:36px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.35)}.icon{font-size:56px;line-height:1;margin-bottom:14px}.title{font-size:28px;font-weight:800;margin:0 0 10px}.subtitle{font-size:16px;opacity:.95;margin:0 0 14px}.meta{font-size:14px;opacity:.88;margin:6px 0}.help{margin-top:18px;font-size:15px;font-weight:700}</style></head><body><div class=\"error-box\"><div class=\"icon\">⚠️</div><h1 class=\"title\">Error while parsing the document</h1><p class=\"subtitle\">The document could not be rendered or extracted for preview.</p><p class=\"meta\">File: "
+                + escapeHtml(stored.name()) + "</p><p class=\"meta\">Type: " + escapeHtml(stored.fileType().toUpperCase())
+                + "</p><p class=\"meta\">Status: parsing/rendering failed</p><p class=\"help\">Please contact Fakher Hammami.</p></div></body></html>";
+    }
+
+    private String escapeHtml(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
     }
 
     private String resolveMediaType(String fileType) {
@@ -178,6 +204,7 @@ public class DocumentLibraryResource {
     }
 
     public record EmptyDocumentResponse(String name, String fileType, long sizeInBytes, boolean empty) {}
+    public record DocumentErrorResponse(String name, String fileType, String operation, boolean error, String message) {}
     public record DocumentMeta(String name, String breadcrumbs, String fileType, boolean empty, long sizeInBytes) {}
     public record UploadResponse(String name, String id) {}
 }

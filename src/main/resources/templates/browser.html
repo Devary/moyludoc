@@ -20,7 +20,14 @@
   </aside>
   <main class="content">
     <div class="viewer-header"><div class="viewer-meta"><strong id="currentDoc">No document selected</strong><span id="breadcrumbs" class="breadcrumbs">—</span></div><div class="viewer-actions"><a id="downloadBtn" href="#" onclick="return false;">Download original</a></div></div>
-    <iframe id="viewer" class="viewer" title="Document preview"></iframe>
+    <div class="viewer-shell">
+      <div id="viewerLoading" class="viewer-loading hidden" aria-live="polite">
+        <div class="spinner" aria-hidden="true"></div>
+        <div class="viewer-loading-text">Loading preview…</div>
+        <div class="viewer-loading-subtext">Large files can take a bit longer to extract and render.</div>
+      </div>
+      <iframe id="viewer" class="viewer" title="Document preview"></iframe>
+    </div>
   </main>
 </div>
 <script src="/browser.js"></script>

@@ -8,6 +8,9 @@ import devary.moyludoc.service.PdfPreviewService;
 import devary.moyludoc.service.PresentationPreviewService;
 import devary.moyludoc.service.SpreadsheetPreviewService;
 import devary.moyludoc.service.TextPreviewService;
+import io.quarkus.qute.CheckedTemplate;
+import io.quarkus.qute.RawString;
+import io.quarkus.qute.TemplateInstance;
 import io.smallrye.mutiny.Uni;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -38,6 +41,15 @@ public class DocumentLibraryResource {
     @Inject PdfPreviewService pdfPreviewService;
     @Inject TextPreviewService textPreviewService;
 
+    @CheckedTemplate(basePath = "")
+    public static class Templates {
+        public static native TemplateInstance browser(DocumentLibraryHtmlService.BrowserNode tree);
+        public static native TemplateInstance previewPdf(String title, PdfPreviewService.PdfData data);
+        public static native TemplateInstance previewText(String title, String fileTypeLabel, boolean isHtml, boolean isMarkdown, String body, RawString rawBody);
+        public static native TemplateInstance previewSpreadsheet(String title, SpreadsheetPreviewService.SpreadsheetData data);
+        public static native TemplateInstance previewPresentation(String title, PresentationPreviewService.PresentationData data);
+    }
+
     @GET @Path("/tree") @Produces(MediaType.APPLICATION_JSON)
     public Uni<DocumentLibraryService.DocumentTreeNode> tree() { return Uni.createFrom().item(documentLibraryService::loadTree); }
 
@@ -47,7 +59,9 @@ public class DocumentLibraryResource {
     }
 
     @GET @Path("/browser") @Produces(MediaType.TEXT_HTML)
-    public Uni<String> browser() { return Uni.createFrom().item(() -> documentLibraryHtmlService.renderBrowserPage(documentLibraryService.loadTree())); }
+    public Uni<String> browser() {
+        return Uni.createFrom().item(() -> Templates.browser(documentLibraryHtmlService.toBrowserNode(documentLibraryService.loadTree())).render());
+    }
 
     @GET @Path("/document/extract") @Produces(MediaType.APPLICATION_JSON)
     public Uni<Object> extract(@QueryParam("id") String id) {
@@ -116,10 +130,20 @@ public class DocumentLibraryResource {
         if (stored.empty()) return renderEmptyDocument(stored);
         return switch (stored.fileType()) {
             case "docx" -> docxHtmlRendererService.renderDocument(docxParsingService.parse(stored.content()), stored.name());
-            case "xlsx" -> spreadsheetPreviewService.renderHtml(spreadsheetPreviewService.parse(stored.content()), stored.name());
-            case "pptx" -> presentationPreviewService.renderHtml(presentationPreviewService.parse(stored.content()), stored.name());
-            case "pdf" -> pdfPreviewService.renderHtml(pdfPreviewService.parse(stored.content()), stored.name());
-            case "txt", "html", "md" -> textPreviewService.renderHtml(textPreviewService.parse(stored.content(), stored.fileType()), stored.name());
+            case "xlsx" -> Templates.previewSpreadsheet(stored.name(), spreadsheetPreviewService.parse(stored.content())).render();
+            case "pptx" -> Templates.previewPresentation(stored.name(), presentationPreviewService.parse(stored.content())).render();
+            case "pdf" -> Templates.previewPdf(stored.name(), pdfPreviewService.parse(stored.content())).render();
+            case "txt", "html", "md" -> {
+                TextPreviewService.TextData data = textPreviewService.parse(stored.content(), stored.fileType());
+                String renderedBody = textPreviewService.renderBody(data);
+                yield Templates.previewText(
+                        stored.name(),
+                        stored.fileType().toUpperCase(),
+                        "html".equals(stored.fileType()),
+                        "md".equals(stored.fileType()),
+                        data.text(),
+                        new RawString(renderedBody)).render();
+            }
             default -> throw new WebApplicationException("Unsupported file type", Response.Status.BAD_REQUEST);
         };
     }

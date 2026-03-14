@@ -1,0 +1,17 @@
+{#if node.document}
+<li>
+  <a href="#" class="doc-link{#if node.empty} empty-file{/if}" data-id="{node.id}" data-name="{node.name}">
+    {node.icon} {node.name}{#if node.empty} (empty){/if}
+    <span class="doc-path">{node.relativePath}</span>
+  </a>
+</li>
+{#else}
+<li class="folder-node collapsed">
+  <div class="folder-row"><span class="folder-caret">▶</span><span>{node.name}</span></div>
+  <ul class="folder-children">
+    {#for child in node.children}
+      {#include treeNode node=child /}
+    {/for}
+  </ul>
+</li>
+{/if}

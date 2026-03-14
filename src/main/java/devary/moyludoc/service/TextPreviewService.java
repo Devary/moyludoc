@@ -11,16 +11,12 @@ public class TextPreviewService {
         return new TextData(fileType, text);
     }
 
-    public String renderHtml(TextData data, String title) {
-        String body = switch (data.fileType()) {
+    public String renderBody(TextData data) {
+        return switch (data.fileType()) {
             case "html" -> data.text();
             case "md" -> renderMarkdown(data.text());
-            default -> "<pre>" + escape(data.text()) + "</pre>";
+            default -> data.text();
         };
-        return "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">"
-                + "<title>" + escape(title) + "</title>"
-                + "<style>body{font-family:Inter,Arial,sans-serif;background:#f8fafc;color:#0f172a;padding:32px}.page{max-width:900px;margin:0 auto;background:#fff;padding:32px;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.08)}pre{white-space:pre-wrap;word-break:break-word}.meta{color:#64748b}code{background:#eef2ff;padding:2px 6px;border-radius:6px}</style></head><body><div class=\"page\"><h1>"
-                + escape(title) + "</h1><div class=\"meta\">" + escape(data.fileType().toUpperCase()) + " preview</div>" + body + "</div></body></html>";
     }
 
     private String renderMarkdown(String markdown) {

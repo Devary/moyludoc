@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{title}</title>
+  <link rel="stylesheet" href="/preview-pdf.css">
+</head>
+<body>
+<div class="page">
+  <h1>{title}</h1>
+  <div class="meta">PDF preview • {data.pageCount} pages</div>
+  {#for image in data.pageImages}
+    <div class="meta">Page {image.pageNumber}</div>
+    <img class="page-thumb" alt="PDF page" src="data:image/png;base64,{image.base64Png}">
+  {/for}
+</div>
+</body>
+</html>

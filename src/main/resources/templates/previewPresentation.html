@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{title}</title>
+  <link rel="stylesheet" href="/preview-presentation.css">
+</head>
+<body>
+<div class="page">
+  <h1>{title}</h1>
+  <div class="meta">PowerPoint preview</div>
+  {#for slide in data.slides}
+    <section class="slide">
+      <div class="meta">Slide {slide.index}</div>
+      <h2>{#if slide.title}{slide.title}{#else}Untitled slide{/if}</h2>
+      {#if slide.thumbnailBase64}<img class="thumb" alt="slide thumbnail" src="data:image/png;base64,{slide.thumbnailBase64}">{/if}
+      {#for text in slide.texts}<p>{text}</p>{/for}
+      {#for link in slide.links}<p><a href="{link.url}" target="_blank" rel="noopener noreferrer">{#if link.label}{link.label}{#else}{link.url}{/if}</a></p>{/for}
+      {#for image in slide.images}<img class="slide-img" alt="Slide embedded image" src="data:image/{image.format};base64,{image.base64Data}">{/for}
+    </section>
+  {/for}
+</div>
+</body>
+</html>

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Moyludoc Library</title>
+  <link rel="stylesheet" href="/browser.css">
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <h1>Moyludoc Library</h1>
+    <div class="muted">Filter documents by name.</div>
+    <input id="treeSearch" class="search" type="search" placeholder="Search documents...">
+    <ul class="tree tree-root">
+      {#for node in tree.children}
+        {#include treeNode node=node /}
+      {/for}
+    </ul>
+  </aside>
+  <main class="content">
+    <div class="viewer-header"><div class="viewer-meta"><strong id="currentDoc">No document selected</strong><span id="breadcrumbs" class="breadcrumbs">—</span></div><div class="viewer-actions"><a id="downloadBtn" href="#" onclick="return false;">Download original</a></div></div>
+    <iframe id="viewer" class="viewer" title="Document preview"></iframe>
+  </main>
+</div>
+<script src="/browser.js"></script>
+</body>
+</html>

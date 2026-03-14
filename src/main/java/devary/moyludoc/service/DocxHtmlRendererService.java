@@ -31,6 +31,7 @@ public class DocxHtmlRendererService {
                 .append(".image-placeholder{display:inline-block;padding:10px 14px;border:1px dashed #9ca3af;border-radius:8px;background:#f9fafb;color:#4b5563;margin:4px 0;}")
                 .append("img.embedded-image{max-width:100%;height:auto;display:block;margin:8px 0;border-radius:8px;}")
                 .append(".section-block{margin-bottom:18px;}")
+                .append("a.doc-link-rendered{color:#2563eb;text-decoration:underline;}")
                 .append(".list-item{display:flex;gap:10px;align-items:flex-start;margin:0 0 14px;line-height:1.6;}")
                 .append(".list-bullet{min-width:22px;color:#374151;}")
                 .append(".align-CENTER{text-align:center;}")
@@ -117,6 +118,14 @@ public class DocxHtmlRendererService {
                 html.append("<span style=\"").append(buildTextStyle(component.textStyle())).append("\">")
                         .append(escapeHtml(component.text()))
                         .append("</span>");
+            } else if (component.type() == DocxParsingService.ComponentType.LINK && component.hyperlink() != null) {
+                html.append("<a class=\"doc-link-rendered\" href=\"")
+                        .append(escapeHtml(component.hyperlink().url()))
+                        .append("\" target=\"_blank\" rel=\"noopener noreferrer\" style=\"")
+                        .append(buildTextStyle(component.textStyle()))
+                        .append("\">")
+                        .append(escapeHtml(component.text()))
+                        .append("</a>");
             } else if (component.type() == DocxParsingService.ComponentType.IMAGE) {
                 appendImage(html, component.image());
             } else if (component.type() == DocxParsingService.ComponentType.TABLE && component.table() != null) {

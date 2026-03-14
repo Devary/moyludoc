@@ -11,6 +11,7 @@ import org.apache.poi.xwpf.usermodel.IBodyElement;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFFooter;
 import org.apache.poi.xwpf.usermodel.XWPFHeader;
+import org.apache.poi.xwpf.usermodel.XWPFHyperlinkRun;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFPicture;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
@@ -112,9 +113,21 @@ public class DocxParsingService {
         for (XWPFRun run : paragraph.getRuns()) {
             String runText = extractRunText(run);
             if (runText != null && !runText.isBlank()) {
+                HyperlinkData hyperlink = null;
+                if (run instanceof XWPFHyperlinkRun hyperlinkRun) {
+                    String url = null;
+                    String hyperlinkId = hyperlinkRun.getHyperlinkId();
+                    if (hyperlinkId != null && !hyperlinkId.isBlank()) {
+                        var hyperlinkDoc = documentSafe(paragraph).getHyperlinkByID(hyperlinkId);
+                        url = hyperlinkDoc != null ? hyperlinkDoc.getURL() : null;
+                    }
+                    if (url != null && !url.isBlank()) {
+                        hyperlink = new HyperlinkData(url, runText);
+                    }
+                }
                 components.add(new InlineComponent(
                         index++,
-                        ComponentType.TEXT,
+                        hyperlink != null ? ComponentType.LINK : ComponentType.TEXT,
                         runText,
                         new TextStyle(
                                 run.isBold(),
@@ -128,7 +141,8 @@ public class DocxParsingService {
                                 run.getStyle(),
                                 run.getVerticalAlignment() != null ? run.getVerticalAlignment().toString() : null),
                         null,
-                        null));
+                        null,
+                        hyperlink));
             }
 
             for (XWPFPicture picture : run.getEmbeddedPictures()) {
@@ -138,11 +152,16 @@ public class DocxParsingService {
                         picture.getDescription(),
                         null,
                         toImageData(picture),
+                        null,
                         null));
             }
         }
 
         return components;
+    }
+
+    private XWPFDocument documentSafe(XWPFParagraph paragraph) {
+        return paragraph.getDocument();
     }
 
     private ImageData toImageData(XWPFPicture picture) {
@@ -283,6 +302,7 @@ public class DocxParsingService {
     public enum ComponentType {
         PARAGRAPH,
         TEXT,
+        LINK,
         TABLE,
         IMAGE
     }
@@ -321,7 +341,8 @@ public class DocxParsingService {
             String text,
             TextStyle textStyle,
             ImageData image,
-            TableData table) {
+            TableData table,
+            HyperlinkData hyperlink) {
     }
 
     public record TextStyle(
@@ -335,6 +356,9 @@ public class DocxParsingService {
             Double fontSize,
             String style,
             String verticalAlignment) {
+    }
+
+    public record HyperlinkData(String url, String label) {
     }
 
     public record ImageData(

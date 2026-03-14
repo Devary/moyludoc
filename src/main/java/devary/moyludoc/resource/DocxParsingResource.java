@@ -28,7 +28,8 @@ public class DocxParsingResource {
     private static final List<String> SAMPLE_FILES = List.of(
             "sample-basic.docx",
             "sample-list-and-table.docx",
-            "sample-styles-showcase.docx");
+            "sample-styles-showcase.docx",
+            "sample-links-and-images.docx");
 
     @Inject
     DocxParsingService docxParsingService;

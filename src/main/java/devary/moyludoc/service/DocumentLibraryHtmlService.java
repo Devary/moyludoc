@@ -17,7 +17,8 @@ public class DocumentLibraryHtmlService {
                 + ".sidebar{background:#111827;color:#f9fafb;padding:20px;overflow:auto;border-right:1px solid #1f2937;}"
                 + ".content{padding:0;overflow:auto;background:#e5e7eb;}"
                 + ".sidebar h1{font-size:20px;margin:0 0 8px;}"
-                + ".muted{font-size:13px;color:#9ca3af;margin-bottom:16px;}"
+                + ".muted{font-size:13px;color:#9ca3af;margin-bottom:12px;}"
+                + ".search{width:100%;box-sizing:border-box;margin-bottom:14px;padding:10px 12px;border-radius:10px;border:1px solid #374151;background:#1f2937;color:#fff;}"
                 + ".tree,.tree ul{list-style:none;padding-left:16px;margin:0;}"
                 + ".tree-root{padding-left:0;}"
                 + ".folder-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;color:#d1d5db;font-weight:600;cursor:pointer;user-select:none;}"
@@ -31,6 +32,7 @@ public class DocumentLibraryHtmlService {
                 + ".doc-link:hover,.doc-link.active{background:#1f2937;color:#fff;}"
                 + ".doc-link.empty-file{color:#fca5a5;}"
                 + ".doc-path{display:block;color:#9ca3af;font-size:12px;margin-top:2px;}"
+                + ".hidden{display:none !important;}"
                 + ".viewer-header{padding:14px 18px;background:#fff;border-bottom:1px solid #d1d5db;display:flex;gap:10px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;}"
                 + ".viewer-meta{display:flex;flex-direction:column;gap:4px;}"
                 + ".breadcrumbs{color:#64748b;font-size:13px;}"
@@ -38,7 +40,7 @@ public class DocumentLibraryHtmlService {
                 + ".viewer{height:calc(100vh - 58px);width:100%;border:0;background:#fff;}"
                 + "</style></head><body>"
                 + "<div class=\"layout\">"
-                + "<aside class=\"sidebar\"><h1>Moyludoc Library</h1><div class=\"muted\">Dynamic collapsible tree restored.</div>"
+                + "<aside class=\"sidebar\"><h1>Moyludoc Library</h1><div class=\"muted\">Filter documents by name.</div><input id=\"treeSearch\" class=\"search\" type=\"search\" placeholder=\"Search documents...\">"
                 + "<ul class=\"tree tree-root\">" + treeHtml + "</ul></aside>"
                 + "<main class=\"content\">"
                 + "<div class=\"viewer-header\"><div class=\"viewer-meta\"><strong id=\"currentDoc\">No document selected</strong><span id=\"breadcrumbs\" class=\"breadcrumbs\">—</span></div><div class=\"viewer-actions\"><a id=\"downloadBtn\" href=\"#\" onclick=\"return false;\">Download original</a></div></div>"
@@ -47,6 +49,9 @@ public class DocumentLibraryHtmlService {
                 + "<script>"
                 + "document.querySelectorAll('.doc-link').forEach(link=>{link.addEventListener('click',async e=>{e.preventDefault();document.querySelectorAll('.doc-link').forEach(x=>x.classList.remove('active'));link.classList.add('active');const id=link.dataset.id;const meta=await fetch('/api/docx/library/document/meta?id='+encodeURIComponent(id)).then(r=>r.json());document.getElementById('currentDoc').textContent=meta.name;document.getElementById('breadcrumbs').textContent=meta.breadcrumbs||'—';document.getElementById('downloadBtn').href='/api/docx/library/document/download?id='+encodeURIComponent(id);document.getElementById('viewer').src='/api/docx/library/document/preview?id='+encodeURIComponent(id);});});"
                 + "document.querySelectorAll('.folder-row').forEach(row=>{row.addEventListener('click',()=>{const node=row.closest('.folder-node');if(node){node.classList.toggle('collapsed');}});});"
+                + "function filterTree(query){const q=(query||'').trim().toLowerCase();if(!q){document.querySelectorAll('.hidden').forEach(el=>el.classList.remove('hidden'));return;}filterList(document.querySelector('.tree-root'),q);}"
+                + "function filterList(container,q){let anyVisible=false;Array.from(container.children).forEach(child=>{let visible=false;const doc=child.querySelector(':scope > .doc-link');const folderRow=child.querySelector(':scope > .folder-row');if(doc){const name=(doc.dataset.name||'').toLowerCase();visible=name.includes(q);}else if(folderRow){const label=folderRow.textContent.toLowerCase();const sub=child.querySelector(':scope > .folder-children');const childVisible=sub?filterList(sub,q):false;visible=label.includes(q)||childVisible;if(visible){child.classList.remove('collapsed');}}child.classList.toggle('hidden',!visible);anyVisible=anyVisible||visible;});return anyVisible;}"
+                + "document.getElementById('treeSearch').addEventListener('input',e=>filterTree(e.target.value));"
                 + "</script></body></html>";
     }
 
@@ -69,7 +74,7 @@ public class DocumentLibraryHtmlService {
                         .append(escapeHtml(node.relativePath()))
                         .append("</span></a></li>");
             } else {
-                html.append("<li class=\"folder-node collapsed\"><div class=\"folder-row\"><span class=\"folder-caret\">▶</span><span>📁 ")
+                html.append("<li class=\"folder-node collapsed\"><div class=\"folder-row\"><span class=\"folder-caret\">▶</span><span>")
                         .append(escapeHtml(node.name()))
                         .append("</span></div><ul class=\"folder-children\">")
                         .append(renderTree(node.children()))
